@@ -64,13 +64,13 @@ const SignUpForm = () => {
 										/>
 									</div>
 								) : (
-									<div className="w-12 h-12 rounded-full bg-green-700/10 group-hover:bg-green-700 border-2 group-hover:border-white flex items-center justify-center">
+									<div className="w-12 h-12 rounded-full bg-green-700/10 group-hover:bg-green-700 border-2 group-hover:border-white overflow-hidden">
 										<Image
 											src="/avatars/man.png"
 											alt="Default Avatar"
-											width={24}
-											height={24}
-											className="text-green-700 group-hover:text-white"
+											width={48}
+											height={48}
+											className="object-cover"
 										/>
 									</div>
 								)}

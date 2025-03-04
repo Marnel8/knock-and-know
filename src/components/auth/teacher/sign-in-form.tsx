@@ -15,7 +15,7 @@ const SignInform = () => {
 			</Button>
 
 			<div className="flex flex-col items-center justify-center  text-white mt-2">
-				<p>Don't have an account?</p>
+				<p>Don&apos;t have an account?</p>
 				<Link
 					href="/sign-up/teacher"
 					className="underline hover:text-green-500 text-lg "
