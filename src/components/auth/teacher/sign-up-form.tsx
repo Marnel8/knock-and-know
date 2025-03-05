@@ -94,10 +94,14 @@ const SignUpForm = () => {
 			});
 			toast.success("Registration successful! Please verify your email.");
 			router.push("/sign-in/teacher");
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error
+					? error.message
+					: "An error occurred during registration";
 			setError("root", {
 				type: "manual",
-				message: error.message || "An error occurred during registration",
+				message: errorMessage,
 			});
 		}
 	};

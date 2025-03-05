@@ -45,10 +45,12 @@ const SignInform = () => {
 			}
 			toast.success("Login successful! Redirecting to dashboard...");
 			router.push("/teacher");
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : "Invalid email or password";
 			setError("root", {
 				type: "manual",
-				message: "Invalid email or password",
+				message: errorMessage,
 			});
 		}
 	};
