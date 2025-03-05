@@ -1,19 +1,20 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
-import React from "react";
 import MotionDiv from "@/components/shared/motion-div";
-
 const Landing = () => {
 	return (
 		<div className="min-h-screen flex items-center justify-center font-genty">
 			<div className="relative">
 				<MotionDiv
-					initial={{ scale: 0, opacity: 0 }}
-					animate={{ scale: 1, opacity: 1 }}
+					initial={{ scale: 0, opacity: 0, y: 50 }}
+					animate={{ scale: 1, opacity: 1, y: 0 }}
 					exit={{ scale: 0.8, opacity: 0 }}
 					transition={{
-						duration: 0.4,
+						type: "spring",
+						stiffness: 500,
+						damping: 20,
+						duration: 5,
 						delay: 0.5,
 					}}
 				>

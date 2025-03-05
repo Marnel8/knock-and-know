@@ -13,38 +13,183 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 
+import * as z from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { avatars } from "@/constants/avatars";
+import { signUpSchema } from "@/zod/auth";
+
+import { auth, db } from "@/firebase/config";
+import {
+	createUserWithEmailAndPassword,
+	sendEmailVerification,
+} from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+
 const SignUpForm = () => {
 	const [selectedAvatar, setSelectedAvatar] = useState<number | null>(null);
+	const router = useRouter();
 
-	const avatars = [
-		{ src: "/avatars/man.png", label: "Man" },
-		{ src: "/avatars/woman.png", label: "Woman" },
-		{ src: "/avatars/boy.png", label: "Boy" },
-		{ src: "/avatars/girl.png", label: "Girl" },
-		{ src: "/avatars/gamer.png", label: "Gamer" },
-		{ src: "/avatars/lion.png", label: "Lion" },
-		{ src: "/avatars/panda.png", label: "Panda" },
-		{ src: "/avatars/meerkat.png", label: "Meerkat" },
-		{ src: "/avatars/chicken.png", label: "Chicken" },
-	];
+	const {
+		register,
+		handleSubmit,
+		setError,
+		setValue,
+		formState: { errors, isSubmitting },
+	} = useForm<z.infer<typeof signUpSchema>>({
+		resolver: zodResolver(signUpSchema),
+		defaultValues: {
+			firstName: "",
+			lastName: "",
+			email: "",
+			password: "",
+			confirmPassword: "",
+			avatar: "",
+			role: "teacher",
+			school: "",
+		},
+	});
+
+	const handleAvatarSelect = (index: number) => {
+		setSelectedAvatar(index);
+		setValue("avatar", avatars[index].src);
+	};
+
+	const onSubmit = async (data: z.infer<typeof signUpSchema>) => {
+		try {
+			if (!selectedAvatar) {
+				setError("avatar", {
+					type: "manual",
+					message: "Please select an avatar",
+				});
+				return;
+			}
+
+			// Create user in Firebase Auth
+			const userCredential = await createUserWithEmailAndPassword(
+				auth,
+				data.email,
+				data.password
+			);
+
+			// Send verification email
+			await sendEmailVerification(userCredential.user);
+
+			// Save user data to Firestore
+			await setDoc(doc(db, "users", userCredential.user.uid), {
+				firstName: data.firstName,
+				lastName: data.lastName,
+				email: data.email,
+				avatar: avatars[selectedAvatar].src,
+				role: data.role,
+				school: data.school,
+				username: data.email.split("@")[0],
+				institution: data.school,
+				password: "",
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			});
+			toast.success("Registration successful! Please verify your email.");
+			router.push("/sign-in/teacher");
+		} catch (error: any) {
+			setError("root", {
+				type: "manual",
+				message: error.message || "An error occurred during registration",
+			});
+		}
+	};
 
 	return (
 		<div className="mt-5">
-			<form className="flex flex-col gap-2">
+			<form className="flex flex-col gap-2" onSubmit={handleSubmit(onSubmit)}>
+				{errors.root && (
+					<p className="text-red-500 text-sm text-center mb-2">
+						{errors.root.message}
+					</p>
+				)}
+
+				{/* Name Fields */}
 				<div className="flex flex-col md:flex-row gap-2">
-					<Input type="text" placeholder="Name" className="text-input" />
-					<Input type="text" placeholder="Surname" className="text-input" />
+					<div className="flex flex-col gap-2 flex-1">
+						<Input
+							type="text"
+							placeholder="Name"
+							className="text-input"
+							{...register("firstName")}
+						/>
+						{errors.firstName && (
+							<p className="text-red-500 text-sm text-center">
+								{errors.firstName.message}
+							</p>
+						)}
+					</div>
+					<div className="flex flex-col gap-2 flex-1">
+						<Input
+							type="text"
+							placeholder="Surname"
+							className="text-input"
+							{...register("lastName")}
+						/>
+						{errors.lastName && (
+							<p className="text-red-500 text-sm text-center">
+								{errors.lastName.message}
+							</p>
+						)}
+					</div>
 				</div>
-				<Input type="text" placeholder="Institution" className="text-input" />
-				<Input type="email" placeholder="Email" className="text-input" />
-				<Input type="password" placeholder="Password" className="text-input" />
+
+				{/* Institution Field */}
+				<Input
+					type="text"
+					placeholder="Institution"
+					className="text-input"
+					{...register("school")}
+				/>
+				{errors.school && (
+					<p className="text-red-500 text-sm text-center">
+						{errors.school.message}
+					</p>
+				)}
+
+				{/* Email Field */}
+				<Input
+					type="email"
+					placeholder="Email"
+					className="text-input"
+					{...register("email")}
+				/>
+				{errors.email && (
+					<p className="text-red-500 text-sm text-center">
+						{errors.email.message}
+					</p>
+				)}
+
+				<Input
+					type="password"
+					placeholder="Password"
+					className="text-input"
+					{...register("password")}
+				/>
+				{errors.password && (
+					<p className="text-red-500 text-sm text-center">
+						{errors.password.message}
+					</p>
+				)}
 				<Input
 					type="password"
 					placeholder="Confirm Password"
 					className="text-input"
+					{...register("confirmPassword")}
 				/>
+				{errors.confirmPassword && (
+					<p className="text-red-500 text-sm text-center">
+						{errors.confirmPassword.message}
+					</p>
+				)}
 
-				{/* Avatar Selection */}
 				<Dialog>
 					<DialogTrigger asChild>
 						<Button
@@ -96,7 +241,7 @@ const SignUpForm = () => {
 									className={`h-24 flex flex-col items-center justify-center gap-2 hover:bg-green-700/10 transition-colors duration-200 ${
 										selectedAvatar === index ? "bg-green-700/20" : ""
 									}`}
-									onClick={() => setSelectedAvatar(index)}
+									onClick={() => handleAvatarSelect(index)}
 								>
 									<div className="w-12 h-12 rounded-full bg-green-700/10 overflow-hidden">
 										<Image
@@ -115,11 +260,23 @@ const SignUpForm = () => {
 						</div>
 					</DialogContent>
 				</Dialog>
+				{errors.avatar && (
+					<p className="text-red-500 text-sm text-center">
+						{errors.avatar.message}
+					</p>
+				)}
 
-				<Button className="btn-primary text-xl tracking-wider px-10 py-6 md:px-16 md:py-10 mt-5 mx-auto">
-					Register
+				{/* Submit Button */}
+				<Button
+					type="submit"
+					disabled={isSubmitting}
+					className="btn-primary text-xl tracking-wider px-10 py-6 md:px-16 md:py-10 mt-5 mx-auto"
+				>
+					{isSubmitting ? "Registering..." : "Register"}
 				</Button>
 			</form>
+
+			{/* Login Link */}
 			<div className="flex flex-col gap-2 mt-8 text-center text-white">
 				<p className="text-center">Already have an account?</p>
 				<Link
