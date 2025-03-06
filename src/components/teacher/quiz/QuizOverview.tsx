@@ -1,3 +1,12 @@
+import {
+	PieChart,
+	Pie,
+	Cell,
+	ResponsiveContainer,
+	Legend,
+	Tooltip,
+} from "recharts";
+
 interface Participant {
 	id: string;
 	name: string;
@@ -27,6 +36,8 @@ interface QuizData {
 interface QuizOverviewProps {
 	quizData: QuizData;
 }
+
+const COLORS = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEEAD"];
 
 const QuizOverview = ({ quizData }: QuizOverviewProps) => {
 	const totalParticipants = quizData.participants.length;
@@ -77,6 +88,12 @@ const QuizOverview = ({ quizData }: QuizOverviewProps) => {
 		).length,
 	};
 
+	// Prepare data for pie chart
+	const pieData = Object.entries(distributions).map(([name, value]) => ({
+		name,
+		value,
+	}));
+
 	return (
 		<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<div className="bg-white rounded-lg shadow p-6">
@@ -109,98 +126,39 @@ const QuizOverview = ({ quizData }: QuizOverviewProps) => {
 
 			<div className="bg-white rounded-lg shadow p-6">
 				<h2 className="text-xl font-semibold mb-4">Performance Distribution</h2>
-				<div className="space-y-4">
-					<div>
-						<div className="flex justify-between items-center mb-2">
-							<span className="text-gray-600">90-100%</span>
-							<span className="font-medium">
-								{distributions["90-100"]} students
-							</span>
-						</div>
-						<div className="w-full bg-gray-200 rounded-full h-2">
-							<div
-								className="bg-maroon-600 h-2 rounded-full"
-								style={{
-									width: `${
-										(distributions["90-100"] / totalParticipants) * 100
-									}%`,
-								}}
-							></div>
-						</div>
+				{totalParticipants > 0 ? (
+					<div className="w-full h-[300px]">
+						<ResponsiveContainer width="100%" height="100%">
+							<PieChart>
+								<Pie
+									data={pieData}
+									cx="50%"
+									cy="50%"
+									labelLine={false}
+									label={({ name, percent }) =>
+										percent > 0
+											? `${name} (${(percent * 100).toFixed(0)}%)`
+											: ""
+									}
+									outerRadius={80}
+									fill="#8884d8"
+									dataKey="value"
+								>
+									{pieData.map((entry, index) => (
+										<Cell
+											key={`cell-${index}`}
+											fill={COLORS[index % COLORS.length]}
+										/>
+									))}
+								</Pie>
+								<Tooltip />
+								<Legend />
+							</PieChart>
+						</ResponsiveContainer>
 					</div>
-					<div>
-						<div className="flex justify-between items-center mb-2">
-							<span className="text-gray-600">80-89%</span>
-							<span className="font-medium">
-								{distributions["80-89"]} students
-							</span>
-						</div>
-						<div className="w-full bg-gray-200 rounded-full h-2">
-							<div
-								className="bg-maroon-600 h-2 rounded-full"
-								style={{
-									width: `${
-										(distributions["80-89"] / totalParticipants) * 100
-									}%`,
-								}}
-							></div>
-						</div>
-					</div>
-					<div>
-						<div className="flex justify-between items-center mb-2">
-							<span className="text-gray-600">70-79%</span>
-							<span className="font-medium">
-								{distributions["70-79"]} students
-							</span>
-						</div>
-						<div className="w-full bg-gray-200 rounded-full h-2">
-							<div
-								className="bg-maroon-600 h-2 rounded-full"
-								style={{
-									width: `${
-										(distributions["70-79"] / totalParticipants) * 100
-									}%`,
-								}}
-							></div>
-						</div>
-					</div>
-					<div>
-						<div className="flex justify-between items-center mb-2">
-							<span className="text-gray-600">60-69%</span>
-							<span className="font-medium">
-								{distributions["60-69"]} students
-							</span>
-						</div>
-						<div className="w-full bg-gray-200 rounded-full h-2">
-							<div
-								className="bg-maroon-600 h-2 rounded-full"
-								style={{
-									width: `${
-										(distributions["60-69"] / totalParticipants) * 100
-									}%`,
-								}}
-							></div>
-						</div>
-					</div>
-					<div>
-						<div className="flex justify-between items-center mb-2">
-							<span className="text-gray-600">Below 60%</span>
-							<span className="font-medium">
-								{distributions["Below 60"]} students
-							</span>
-						</div>
-						<div className="w-full bg-gray-200 rounded-full h-2">
-							<div
-								className="bg-maroon-600 h-2 rounded-full"
-								style={{
-									width: `${
-										(distributions["Below 60"] / totalParticipants) * 100
-									}%`,
-								}}
-							></div>
-						</div>
-					</div>
-				</div>
+				) : (
+					<p className="text-center text-gray-500">No data available</p>
+				)}
 			</div>
 		</div>
 	);
