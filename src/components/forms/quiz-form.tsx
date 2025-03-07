@@ -1,3 +1,4 @@
+"use client";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { QuizFormValues, quizFormSchema } from "@/zod/quiz.schema";
@@ -20,37 +21,37 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trash2, PlusCircle, Loader2 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { Trash2, PlusCircle } from "lucide-react";
+import React, { useState } from "react";
 import toast from "react-hot-toast";
 
 interface QuizFormProps {
 	onSubmit: (data: QuizFormValues) => void;
+	initialData?: QuizFormValues;
 }
 
 const DEFAULT_OPTIONS = ["", "", "", ""];
 const ALPHABET = ["A", "B", "C", "D"];
 
-export function QuizForm({ onSubmit }: QuizFormProps) {
+export function QuizForm({ onSubmit, initialData }: QuizFormProps) {
 	const [currentStep, setCurrentStep] = useState<"quiz" | "rooms">("quiz");
 	const [showOptions, setShowOptions] = useState<boolean[]>([]);
 
 	const form = useForm<QuizFormValues>({
 		resolver: zodResolver(quizFormSchema),
-		mode: "onChange",
-		defaultValues: {
+		defaultValues: initialData || {
 			name: "",
 			description: "",
 			examPhases: [
 				{
 					type: "multipleChoice",
-					instructions: "",
 					timeLimit: 30,
+					instructions: "",
 				},
 			],
 			questions: [],
 			startDateTime: new Date(),
-			endDateTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Default to tomorrow
+			endDateTime: new Date(),
 			rooms: [],
 		},
 	});
@@ -78,41 +79,9 @@ export function QuizForm({ onSubmit }: QuizFormProps) {
 		name: "rooms",
 	});
 
-	const isSubmitting = form.formState.isSubmitting;
-
 	const getPhaseType = (phaseIndex: number) => {
-		return phaseIndex % 2 === 0 ? "multipleChoice" : "trueFalse";
+		return form.getValues(`examPhases.${phaseIndex}.type`);
 	};
-
-	const handleQuestionTypeChange = (index: number, phaseIndex: number) => {
-		const phaseType = form.getValues(`examPhases.${phaseIndex}.type`);
-		const newShowOptions = [...showOptions];
-		newShowOptions[index] = phaseType === "multipleChoice";
-		setShowOptions(newShowOptions);
-
-		// Reset the correct answer when switching question types
-		form.setValue(
-			`questions.${index}.correctAnswer`,
-			phaseType === "multipleChoice" ? "" : false
-		);
-
-		// Reset options when switching to true/false
-		if (phaseType === "trueFalse") {
-			form.setValue(`questions.${index}.options`, []);
-		} else {
-			form.setValue(`questions.${index}.options`, DEFAULT_OPTIONS);
-		}
-
-		// Update the phase and type
-		form.setValue(`questions.${index}.phase`, phaseIndex + 1);
-		form.setValue(`questions.${index}.type`, phaseType);
-	};
-
-	// Initialize showOptions based on existing questions
-	useEffect(() => {
-		const questions = form.getValues("questions");
-		setShowOptions(questions.map((q) => q.type === "multipleChoice"));
-	}, [form]);
 
 	const handleFormSubmit = async (data: QuizFormValues) => {
 		try {
@@ -186,7 +155,7 @@ export function QuizForm({ onSubmit }: QuizFormProps) {
 
 	const addNewPhase = () => {
 		appendPhase({
-			type: "multipleChoice", // Default type that can be changed
+			type: "multipleChoice",
 			instructions: "",
 			timeLimit: 30,
 		});
@@ -303,7 +272,8 @@ export function QuizForm({ onSubmit }: QuizFormProps) {
 																			value: "multipleChoice" | "trueFalse"
 																		) => {
 																			field.onChange(value);
-																			// Update existing questions in this phase
+
+																			// Get all questions for this phase
 																			const questions =
 																				form.getValues("questions");
 																			questions.forEach((_, qIndex) => {
@@ -313,10 +283,40 @@ export function QuizForm({ onSubmit }: QuizFormProps) {
 																					) ===
 																					phaseIndex + 1
 																				) {
-																					handleQuestionTypeChange(
-																						qIndex,
-																						phaseIndex
+																					// Update question type
+																					form.setValue(
+																						`questions.${qIndex}.type`,
+																						value
 																					);
+
+																					// Reset options and correct answer based on new type
+																					if (value === "trueFalse") {
+																						form.setValue(
+																							`questions.${qIndex}.options`,
+																							[]
+																						);
+																						form.setValue(
+																							`questions.${qIndex}.correctAnswer`,
+																							false
+																						);
+																					} else {
+																						form.setValue(
+																							`questions.${qIndex}.options`,
+																							DEFAULT_OPTIONS
+																						);
+																						form.setValue(
+																							`questions.${qIndex}.correctAnswer`,
+																							""
+																						);
+																					}
+
+																					// Update showOptions state
+																					const newShowOptions = [
+																						...showOptions,
+																					];
+																					newShowOptions[qIndex] =
+																						value === "multipleChoice";
+																					setShowOptions(newShowOptions);
 																				}
 																			});
 																		}}
@@ -601,11 +601,7 @@ export function QuizForm({ onSubmit }: QuizFormProps) {
 																						onValueChange={(value) => {
 																							field.onChange(value === "true");
 																						}}
-																						value={
-																							typeof field.value === "boolean"
-																								? field.value.toString()
-																								: "false"
-																						}
+																						value={String(field.value)}
 																					>
 																						<FormControl>
 																							<SelectTrigger>
@@ -731,27 +727,15 @@ export function QuizForm({ onSubmit }: QuizFormProps) {
 							type="button"
 							className="w-full"
 							onClick={moveToRooms}
-							disabled={fields.length === 0 || isSubmitting}
+							disabled={fields.length === 0}
 						>
-							{isSubmitting ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									Processing...
-								</>
-							) : (
-								"Next: Add Quiz Rooms"
-							)}
+							Next: Add Quiz Rooms
 						</Button>
 					</>
 				) : (
 					<>
 						<div className="flex items-center justify-between mb-6">
-							<Button
-								type="button"
-								variant="outline"
-								onClick={moveBackToQuiz}
-								disabled={isSubmitting}
-							>
+							<Button type="button" variant="outline" onClick={moveBackToQuiz}>
 								← Back to Quiz Details
 							</Button>
 							<h2 className="text-xl font-semibold">Quiz Rooms</h2>
@@ -919,15 +903,8 @@ export function QuizForm({ onSubmit }: QuizFormProps) {
 							</CardContent>
 						</Card>
 
-						<Button type="submit" className="w-full" disabled={isSubmitting}>
-							{isSubmitting ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									Creating Quiz...
-								</>
-							) : (
-								"Create Quiz"
-							)}
+						<Button type="submit" className="w-full">
+							Create Quiz
 						</Button>
 					</>
 				)}

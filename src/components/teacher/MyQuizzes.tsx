@@ -14,7 +14,7 @@ import { db } from "@/firebase/config";
 import useAuth from "@/hooks/useAuth";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, FileQuestion, Loader2, Trash2 } from "lucide-react";
+import { AlertCircle, FileQuestion, Loader2, Trash2, Edit } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,13 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Quiz {
 	id: string;
@@ -38,9 +45,35 @@ interface Quiz {
 	teacherId: string;
 }
 
-const truncateText = (text: string, limit: number) => {
-	if (text.length <= limit) return text;
-	return text.slice(0, limit) + "...";
+const getCardColors = (index: number) => {
+	const colors = [
+		{
+			border: "border-l-emerald-400",
+			bg: "bg-emerald-50",
+			text: "text-emerald-500",
+		},
+		{
+			border: "border-l-sky-400",
+			bg: "bg-sky-50",
+			text: "text-sky-500",
+		},
+		{
+			border: "border-l-violet-400",
+			bg: "bg-violet-50",
+			text: "text-violet-500",
+		},
+		{
+			border: "border-l-amber-400",
+			bg: "bg-amber-50",
+			text: "text-amber-500",
+		},
+		{
+			border: "border-l-rose-400",
+			bg: "bg-rose-50",
+			text: "text-rose-500",
+		},
+	];
+	return colors[index % colors.length];
 };
 
 const MyQuizzes = () => {
@@ -49,6 +82,7 @@ const MyQuizzes = () => {
 	const [error, setError] = useState<string | null>(null);
 	const [quizToDelete, setQuizToDelete] = useState<Quiz | null>(null);
 	const user = useAuth();
+	const router = useRouter();
 
 	useEffect(() => {
 		const fetchQuizzes = async () => {
@@ -108,6 +142,12 @@ const MyQuizzes = () => {
 		setQuizToDelete(quiz);
 	};
 
+	const handleEditClick = (e: React.MouseEvent, quizId: string) => {
+		e.preventDefault(); // Prevent navigation from parent Link
+		e.stopPropagation(); // Prevent event bubbling
+		router.push(`/teacher/my-library/edit/${quizId}`);
+	};
+
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center min-h-[200px]">
@@ -163,95 +203,146 @@ const MyQuizzes = () => {
 	}
 
 	return (
-		<>
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-				{quizzes.map((quiz) => (
+		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+			{quizzes.map((quiz, index) => {
+				const colors = getCardColors(index);
+				return (
 					<Link
-						href={`/teacher/my-library/${quiz.id}`}
 						key={quiz.id}
-						className="block group"
+						href={`/teacher/my-library/${quiz.id}`}
+						className="block"
 					>
-						<Card className="hover:shadow-md transition-all duration-300 relative h-full bg-white border border-gray-100 rounded-3xl p-2">
-							<Button
-								variant="ghost"
-								size="icon"
-								className="absolute top-4 right-4 h-8 w-8 text-gray-400 hover:text-[#D92D20] hover:bg-[#FEE4E2] z-10"
-								onClick={(e) => handleDeleteClick(e, quiz)}
-							>
-								<Trash2 className="h-4 w-4" />
-							</Button>
-							<CardHeader className="p-4">
-								<div className="flex flex-col gap-3">
-									<div className="flex items-center gap-3">
-										<div className="bg-[#F9F5FF] p-2 rounded-xl">
-											<FileQuestion className="h-5 w-5 text-[#7F56D9]" />
-										</div>
-										<CardTitle className="text-lg font-semibold text-[#101828] group-hover:text-[#7F56D9] transition-colors">
-											{quiz.name}
-										</CardTitle>
+						<Card
+							className={`h-full hover:shadow-lg transition-shadow duration-200 border-l-4 ${colors.border}`}
+						>
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<div className="flex items-center gap-3">
+									<div className={`p-2 ${colors.bg} rounded-lg`}>
+										<FileQuestion className={`w-5 h-5 ${colors.text}`} />
 									</div>
-									{quiz.description && (
-										<p
-											className="text-[#475467] text-sm"
-											title={quiz.description}
-										>
-											{truncateText(quiz.description, 50)}
-										</p>
+									<CardTitle className="text-lg font-semibold">
+										{quiz.name}
+									</CardTitle>
+								</div>
+								<div className="flex items-center gap-2">
+									{quiz.status === "draft" && (
+										<TooltipProvider>
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<button
+														onClick={(e) => handleEditClick(e, quiz.id)}
+														className={`text-gray-500 hover:${colors.text} transition-colors cursor-pointer duration-200 transform hover:scale-110 hover:text-blue-600`}
+													>
+														<Edit className="w-5 h-5" />
+													</button>
+												</TooltipTrigger>
+												<TooltipContent>
+													<p>Edit quiz</p>
+												</TooltipContent>
+											</Tooltip>
+										</TooltipProvider>
 									)}
+									<TooltipProvider>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<button
+													onClick={(e) => handleDeleteClick(e, quiz)}
+													className="text-gray-500 hover:text-red-600 transition-colors cursor-pointer duration-200 transform hover:scale-110"
+												>
+													<Trash2 className="w-5 h-5" />
+												</button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p>Delete quiz</p>
+											</TooltipContent>
+										</Tooltip>
+									</TooltipProvider>
 								</div>
 							</CardHeader>
-							<CardContent className="p-4 pt-0">
+							<CardContent>
+								<p className="text-sm text-gray-500 line-clamp-2 mb-4">
+									{quiz.description || "No description"}
+								</p>
 								<div className="flex items-center justify-between">
-									<div className="text-sm text-[#475467]">
-										Created {formatDistanceToNow(quiz.createdAt)} ago
-									</div>
 									<Badge
 										variant={
 											quiz.status === "published" ? "default" : "secondary"
 										}
-										className={`capitalize font-normal ${
-											quiz.status === "draft"
-												? "bg-[#FEF3F2] text-[#B42318] border-[#FEE4E2]"
-												: "bg-[#ECFDF3] text-[#027A48] border-[#ABEFC6]"
-										}`}
+										className={
+											quiz.status === "published"
+												? `${colors.bg} ${colors.text} border-0`
+												: ""
+										}
 									>
-										{quiz.status}
+										{quiz.status.charAt(0).toUpperCase() + quiz.status.slice(1)}
 									</Badge>
+									<span className="text-xs text-gray-500">
+										Created{" "}
+										{formatDistanceToNow(quiz.createdAt, {
+											addSuffix: true,
+										})}
+									</span>
 								</div>
 							</CardContent>
 						</Card>
 					</Link>
-				))}
-			</div>
+				);
+			})}
+			{quizzes.length === 0 && !error && (
+				<div className="col-span-full">
+					<Alert>
+						<AlertCircle className="h-4 w-4" />
+						<AlertTitle>No quizzes found</AlertTitle>
+						<AlertDescription>
+							You haven&apos;t created any quizzes yet. Start by creating a new
+							quiz!
+						</AlertDescription>
+					</Alert>
+				</div>
+			)}
+			{error && (
+				<div className="col-span-full">
+					<Alert variant="destructive">
+						<AlertCircle className="h-4 w-4" />
+						<AlertTitle>Error</AlertTitle>
+						<AlertDescription>
+							{error === "indexRequired" ? (
+								<>
+									The quiz list requires an index to be created. Please wait a
+									few minutes and try again.
+								</>
+							) : (
+								error
+							)}
+						</AlertDescription>
+					</Alert>
+				</div>
+			)}
 
+			{/* Delete Confirmation Dialog */}
 			<Dialog open={!!quizToDelete} onOpenChange={() => setQuizToDelete(null)}>
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>Delete Quiz</DialogTitle>
-						<DialogDescription className="text-[#475467]">
+						<DialogDescription>
 							Are you sure you want to delete &quot;{quizToDelete?.name}&quot;?
 							This action cannot be undone.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setQuizToDelete(null)}
-							className="border-[#D0D5DD] text-[#344054]"
-						>
+						<Button variant="outline" onClick={() => setQuizToDelete(null)}>
 							Cancel
 						</Button>
 						<Button
 							variant="destructive"
 							onClick={() => quizToDelete && handleDelete(quizToDelete)}
-							className="bg-[#D92D20] hover:bg-[#B42318]"
 						>
 							Delete
 						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
-		</>
+		</div>
 	);
 };
 
